@@ -84,7 +84,7 @@ module.exports = function(tilelive, options) {
     length: function(val) {
       return (val[0] && val[0].length) ? val[0].length : 1;
     },
-    maxAge: 6 * 3600e3 // 6 hours
+    maxAge: 31536e6 // 1 year
   });
 
   var cache = Object.create(tilelive);
