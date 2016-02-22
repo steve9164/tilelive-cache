@@ -126,7 +126,7 @@ module.exports = function(tilelive, options) {
     if (source.getTile) {
       var _getTile = source.getTile.bind(source);
 
-      source.getTile = locker(function(z, x, y, lock) {
+      var lockedGetTile = locker(function(z, x, y, lock) {
         var properties = getContextCallbackProperties(this);
 
         // lock neighboring tiles when metatiling (if the source is streamable)
@@ -157,6 +157,16 @@ module.exports = function(tilelive, options) {
           return _getTile(z, x, y, unlock);
         });
       }).bind(source);
+
+      source.getTile = function(z, x, y, callback) {
+        if (source.tileIsCached && source.tileIsCached(z,x,y)){
+          return _getTile(z, x, y, callback);
+        }
+        else {
+          return lockedGetTile(z, x, y, callback);
+        }
+      };
+
     }
 
     if (source.getGrid) {
