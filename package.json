@@ -1,6 +1,6 @@
 {
   "name": "tilelive-cache",
-  "version": "0.6.3",
+  "version": "0.6.5",
   "description": "A caching wrapper for tilelive.js",
   "author": "Seth Fitzsimmons <seth@mojodna.net>",
   "repository": {
@@ -11,6 +11,6 @@
   "dependencies": {
     "clone": "^1.0.2",
     "locking-cache": "^0.2.0",
-    "tilelive-streaming": "^0.6.1"
+    "tilelive-streaming": "^0.6.3"
   }
 }

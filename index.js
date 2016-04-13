@@ -14,10 +14,16 @@ var CacheCollector = function(locker, makeKey) {
 
   var chunks = [],
       headers = {},
-      tile;
+      tile,
+      error;
 
   this.on("pipe", function(src) {
     tile = src;
+
+    tile.on("error", function(err) {
+      console.warn("Error reading %d/%d/%d:", tile.z, tile.x, tile.y, err.stack);
+      error = err;
+    });
   });
 
   this.setHeader = function(header, value) {
@@ -36,11 +42,13 @@ var CacheCollector = function(locker, makeKey) {
 
     var key = makeKey("getTile", tile.context, tile.z, tile.x, tile.y),
         waiting = locker.locks.get(key) || [],
-        args = [null, buf, headers],
+        args = [error, buf, headers],
         data = args.slice(1);
 
     // populate the cache
-    locker.cache.set(key, data);
+    if (error == null) {
+      locker.cache.set(key, data);
+    }
 
     // unlock the target
     locker.locks.del(key);
@@ -144,7 +152,7 @@ module.exports = function(tilelive, options) {
               if (!(ix === x && iy === y)) {
                 var key = makeKey("getTile", properties, z, ix, iy);
 
-                if (!locker.locks.get(key)) {
+                if (!locker.locks.get(key) && !locker.cache.get(key)) {
                   // lock it with an empty list of callbacks (nothing to notify)
                   locker.locks.set(key, []);
                 }
@@ -214,10 +222,6 @@ module.exports = function(tilelive, options) {
     });
 
     target._write = function(tile, _, callback) {
-      tile.on("error", function(err) {
-        console.warn("Error reading %d/%d/%d:", tile.z, tile.x, tile.y, err.stack);
-      });
-
       tile.pipe(new CacheCollector(locker, makeKey).on("finish", callback));
     };
 
@@ -245,6 +249,12 @@ module.exports = function(tilelive, options) {
     }
 
     var key = crypto.createHash("sha1").update(JSON.stringify(uri)).digest("hex");
+
+    // mangle the URI after the key has been generated
+    if (uri.protocol === "mapnik:") {
+      // disable mapnik's internal cache
+      uri.query.internal_cache = false;
+    }
 
     return lock(key, function(unlock) {
       return tilelive.load(uri, function(err, source) {
